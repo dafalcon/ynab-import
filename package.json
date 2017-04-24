@@ -1,0 +1,13 @@
+{
+  "name": "ynab-importer",
+  "version": "0.0.1",
+  "description": "Import YNAB transactions",
+  "dependencies": {
+    "casperjs": "^1.0"
+  },
+    "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "license": "MIT"
+}
