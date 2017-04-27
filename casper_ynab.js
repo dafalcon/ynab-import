@@ -31,7 +31,9 @@ var casper = require('casper').create({
 // Check command line arguments
 var username = casper.cli.options["username"],
     password = casper.cli.options["password"],
-    import_new_transactions = casper.cli.options["import"];
+    import_new_transactions = casper.cli.options["import"],
+    account_names = [],
+    account_details = [];
 
 casper.on('remote.message', function(msg) {
   if (casper.options.verbose) {
@@ -53,39 +55,56 @@ if (is_blank(username) || is_blank(password)) {
 
   casper.thenClick(".button-primary");
 
-  // need approval or categorization:
-  // .accounts-notification button
-  // $(".accounts-notification button").text();
-  // "432 transactions"
-  // parseInt($(".accounts-notification button").text().match(/([0-9]+)/)) || 0;
-
-  // import button: .accounts-toolbar-import-transactions
-  // text:
-  // "         Import
-  //          (13)
-  //        "
-  // parseInt($(".accounts-toolbar-import-transactions").text().match(/([0-9]+)/)) || 0;
-
-  var accountsSelector = '.nav-account .nav-account-row';
-  var new_transactions = 0;
-  var transactions_to_review = 0;
-  casper.waitForSelector(accountsSelector, function() {
-    var returned_accounts = this.evaluate(function(import_new_transactions) {
-      var accounts = [];
-      $(".nav-account .nav-account-row").each(function() {
-        this.click();
-        accounts.push({
-          name: $.trim($(this).find('.nav-account-name').text()),
-          pending: parseInt($(".accounts-notification button").text().match(/([0-9]+)/)) || 0,
-          imported: parseInt($(".accounts-toolbar-import-transactions").text().match(/([0-9]+)/)) || 0});
-      });
-      if (import_new_transactions) {
-        $(".accounts-toolbar-import-transactions").click();
-      }
-      return accounts;
-    }, import_new_transactions);
-    print_account_summary(casper, returned_accounts, import_new_transactions);
+  casper.then(function() {
+    var accountsSelector = '.nav-account .nav-account-row';
+    casper.waitForSelector(accountsSelector, function() {
+      account_names = this.evaluate(function(accountsSelector) {
+        var accounts = [];
+        $(accountsSelector).each(function() {
+          accounts.push($.trim($(this).find('.nav-account-name').text()));
+        });
+        return accounts;
+      }, accountsSelector);
+    });
   });
+
+  casper.then(function() {
+    casper.eachThen(account_names, function(obj) {
+      account_details.push(casper.evaluate(function(account) {
+        $("div.nav-account-name.user-data[title='" + account + "']").click();
+        var data = {
+          name: account,
+          pending: parseInt($(".accounts-notification button").text().match(/([0-9]+)/)) || 0,
+          imported: parseInt($(".accounts-toolbar-import-transactions").text().match(/([0-9]+)/)) || 0
+        };
+        return data;
+      }, obj.data));
+
+      // TODO: this is broken - it only imports transactions from one
+      // account.  I think I need a waitFor call after it.  If you
+      // click import when there are no transactions to import then it displays a message like this:
+
+      //   <div id="ember8262" class="ember-view accounts-notification-item accounts-notification-no-transactions-imported" style="overflow: hidden; height: 24.9511px; padding-top: 5.70312px; margin-top: 0px; padding-bottom: 5.70312px; margin-bottom: 0px;">There are no transactions to import. </div>
+
+      // But if there are transactions to import it doesn't display
+      // anything specific to actually importing them.  My best idea
+      // at this point is to write a waitFor function that evaluates
+      // some javascript and returns true when the text of the import
+      // button does not contain parenthesis.      
+      casper.then(function() {
+        if (import_new_transactions) {
+          casper.evaluate(function() {
+            $(".accounts-toolbar-import-transactions").click();
+          });
+        }
+      });
+    });
+  });
+
+  casper.then(function() {
+    print_account_summary(casper, account_details, import_new_transactions);
+  });
+
 }
 
 casper.run();
