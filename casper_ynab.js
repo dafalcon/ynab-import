@@ -80,21 +80,17 @@ if (is_blank(username) || is_blank(password)) {
         return data;
       }, obj.data));
 
-      // TODO: this is broken - it only imports transactions from one
-      // account.  I think I need a waitFor call after it.  If you
-      // click import when there are no transactions to import then it displays a message like this:
-
-      //   <div id="ember8262" class="ember-view accounts-notification-item accounts-notification-no-transactions-imported" style="overflow: hidden; height: 24.9511px; padding-top: 5.70312px; margin-top: 0px; padding-bottom: 5.70312px; margin-bottom: 0px;">There are no transactions to import. </div>
-
-      // But if there are transactions to import it doesn't display
-      // anything specific to actually importing them.  My best idea
-      // at this point is to write a waitFor function that evaluates
-      // some javascript and returns true when the text of the import
-      // button does not contain parenthesis.      
       casper.then(function() {
         if (import_new_transactions) {
+          // click the import button
           casper.evaluate(function() {
             $(".accounts-toolbar-import-transactions").click();
+          });
+          // wait for the import to complete
+          casper.waitFor(function import_to_complete() {
+            return this.evaluate(function() {
+              return $.trim($(".accounts-toolbar-import-transactions").text()) == "Import";
+            });
           });
         }
       });
@@ -108,11 +104,3 @@ if (is_blank(username) || is_blank(password)) {
 }
 
 casper.run();
-
-
-
-// Next steps:
-// - Click the import button
-// - Print a nice report, remove other junk from it so only the account info I want to see is printed.
-// - Email the report to jen and i
-// 
