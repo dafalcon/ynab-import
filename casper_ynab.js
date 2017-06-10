@@ -70,27 +70,50 @@ if (is_blank(username) || is_blank(password)) {
 
   casper.then(function() {
     casper.eachThen(account_names, function(obj) {
-      account_details.push(casper.evaluate(function(account) {
-        $("div.nav-account-name.user-data[title='" + account + "']").click();
+
+      let account_name = obj.data;
+
+      // click the account in the left hand nav
+      casper.evaluate(function(account_name) {
+        $("div.nav-account-name.user-data[title='" + account_name + "']").click();
+      }, account_name);
+
+      // wait for the display to load that account_name
+      casper.waitFor(function(account_name) {
+        casper.evaluate(function(account_name) {
+          return $.trim($(".accounts-header-total-inner-label").text()) == account_name;
+        }, account_name);
+      }, account_name);
+      
+      account_details.push(casper.evaluate(function(account_name) {
         var data = {
-          name: account,
+          name: account_name,
           pending: parseInt($(".accounts-notification button").text().match(/([0-9]+)/)) || 0,
           imported: parseInt($(".accounts-toolbar-import-transactions").text().match(/([0-9]+)/)) || 0
         };
         return data;
-      }, obj.data));
+      }, account_name));
 
       casper.then(function() {
         if (import_new_transactions) {
+          
+          // get a count of how many transactions are currently being displayed
+          let current_count = casper.evaluate(function() {
+            return $(".ynab-grid-body-row").length;
+          });
+          
           // click the import button
           casper.evaluate(function() {
             $(".accounts-toolbar-import-transactions").click();
           });
+
           // wait for the import to complete
+          let expected_count = current_count + account_details[account_details.length-1].imported;
           casper.waitFor(function import_to_complete() {
-            return this.evaluate(function() {
-              return $.trim($(".accounts-toolbar-import-transactions").text()) == "Import";
-            });
+            return this.evaluate(function(expected_count) {
+              // return $.trim($(".accounts-toolbar-import-transactions").text()) == "Import";
+              return return $(".ynab-grid-body-row").length == expected_count;
+            }, expected_count);
           });
         }
       });
