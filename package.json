@@ -5,7 +5,7 @@
   "dependencies": {
     "casperjs": "^1.0"
   },
-    "repository": {
+  "repository": {
     "type": "git",
     "url": ""
   },
