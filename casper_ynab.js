@@ -35,6 +35,7 @@ var username = casper.cli.options["username"],
     account_names = [],
     account_details = [];
 
+// print browser console messages if we're running in verbose mode
 casper.on('remote.message', function(msg) {
   if (casper.options.verbose) {
     this.echo(msg);
@@ -46,15 +47,16 @@ if (is_blank(username) || is_blank(password)) {
 } else {
   casper.start('https://app.youneedabudget.com/');
 
+  // log in
   casper.then(function() {
     this.fillSelectors(".users-form", {
       "input.login-username": username,
       "input.login-password": password
     });
   });
-
   casper.thenClick(".button-primary");
 
+  // get a list of accounts
   casper.then(function() {
     var accountsSelector = '.nav-account .nav-account-row';
     casper.waitForSelector(accountsSelector, function() {
@@ -68,6 +70,7 @@ if (is_blank(username) || is_blank(password)) {
     });
   });
 
+  // iterate over all the accounts
   casper.then(function() {
     casper.eachThen(account_names, function(obj) {
 
@@ -101,28 +104,17 @@ if (is_blank(username) || is_blank(password)) {
 
       casper.then(function() {
         if (import_new_transactions) {
-          
-          // get a count of how many transactions are currently being displayed
-          /*let current_count = casper.evaluate(function() {
-            return $(".ynab-grid-body-row").length;
-          });*/
-          
           // click the import button
           casper.evaluate(function() {
             $(".accounts-toolbar-import-transactions").click();
           });
 
-          // wait for the import to complete
-          // this is super ghetto and I'm not sure it will work
+          // wait for the import to complete.  the numeric value of
+          // transactions to be imported clears immediately, but the
+          // import itself happens asynchronously and you can't go to
+          // the next account until it finishes.  this isn't a great
+          // solution, but it works for now.
           casper.wait(3000);
-          
-          /*let expected_count = current_count + account_details[account_details.length-1].imported;
-          casper.waitFor(function import_to_complete() {
-            return this.evaluate(function(expected_count) {
-              // return $.trim($(".accounts-toolbar-import-transactions").text()) == "Import";
-              return return $(".ynab-grid-body-row").length == expected_count;
-            }, expected_count);
-          });*/
         }
       });
     });
