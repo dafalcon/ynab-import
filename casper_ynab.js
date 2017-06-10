@@ -35,6 +35,7 @@ var username = casper.cli.options["username"],
     account_names = [],
     account_details = [];
 
+// print browser console messages if we're running in verbose mode
 casper.on('remote.message', function(msg) {
   if (casper.options.verbose) {
     this.echo(msg);
@@ -46,15 +47,16 @@ if (is_blank(username) || is_blank(password)) {
 } else {
   casper.start('https://app.youneedabudget.com/');
 
+  // log in
   casper.then(function() {
     this.fillSelectors(".users-form", {
       "input.login-username": username,
       "input.login-password": password
     });
   });
-
   casper.thenClick(".button-primary");
 
+  // get a list of accounts
   casper.then(function() {
     var accountsSelector = '.nav-account .nav-account-row';
     casper.waitForSelector(accountsSelector, function() {
@@ -68,17 +70,37 @@ if (is_blank(username) || is_blank(password)) {
     });
   });
 
+  // iterate over all the accounts
   casper.then(function() {
     casper.eachThen(account_names, function(obj) {
-      account_details.push(casper.evaluate(function(account) {
-        $("div.nav-account-name.user-data[title='" + account + "']").click();
-        var data = {
-          name: account,
-          pending: parseInt($(".accounts-notification button").text().match(/([0-9]+)/)) || 0,
-          imported: parseInt($(".accounts-toolbar-import-transactions").text().match(/([0-9]+)/)) || 0
-        };
-        return data;
-      }, obj.data));
+
+      var account_name = obj.data;
+
+      // click the account in the left hand nav
+      casper.evaluate(function(account_name) {
+        $("div.nav-account-name.user-data[title='" + account_name + "']").click();
+      }, account_name);
+
+      // wait for the display to load that account_name
+      casper.then(function() {
+        casper.waitFor(function() {
+          return this.evaluate(function(account_name) {
+            return $.trim($(".accounts-header-total-inner-label").text()) == account_name;
+          }, account_name);
+        });
+      });
+
+      // scrape some information about the account
+      casper.then(function() {
+        account_details.push(casper.evaluate(function(account_name) {
+          var data = {
+            name: account_name,
+            pending: parseInt($(".accounts-notification button").text().match(/([0-9]+)/)) || 0,
+            imported: parseInt($(".accounts-toolbar-import-transactions").text().match(/([0-9]+)/)) || 0
+          };
+          return data;
+        }, account_name));
+      });
 
       casper.then(function() {
         if (import_new_transactions) {
@@ -86,12 +108,13 @@ if (is_blank(username) || is_blank(password)) {
           casper.evaluate(function() {
             $(".accounts-toolbar-import-transactions").click();
           });
-          // wait for the import to complete
-          casper.waitFor(function import_to_complete() {
-            return this.evaluate(function() {
-              return $.trim($(".accounts-toolbar-import-transactions").text()) == "Import";
-            });
-          });
+
+          // wait for the import to complete.  the numeric value of
+          // transactions to be imported clears immediately, but the
+          // import itself happens asynchronously and you can't go to
+          // the next account until it finishes.  this isn't a great
+          // solution, but it works for now.
+          casper.wait(3000);
         }
       });
     });
