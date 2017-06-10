@@ -71,7 +71,7 @@ if (is_blank(username) || is_blank(password)) {
   casper.then(function() {
     casper.eachThen(account_names, function(obj) {
 
-      let account_name = obj.data;
+      var account_name = obj.data;
 
       // click the account in the left hand nav
       casper.evaluate(function(account_name) {
@@ -79,28 +79,33 @@ if (is_blank(username) || is_blank(password)) {
       }, account_name);
 
       // wait for the display to load that account_name
-      casper.waitFor(function(account_name) {
-        casper.evaluate(function(account_name) {
-          return $.trim($(".accounts-header-total-inner-label").text()) == account_name;
-        }, account_name);
-      }, account_name);
-      
-      account_details.push(casper.evaluate(function(account_name) {
-        var data = {
-          name: account_name,
-          pending: parseInt($(".accounts-notification button").text().match(/([0-9]+)/)) || 0,
-          imported: parseInt($(".accounts-toolbar-import-transactions").text().match(/([0-9]+)/)) || 0
-        };
-        return data;
-      }, account_name));
+      casper.then(function() {
+        casper.waitFor(function() {
+          return this.evaluate(function(account_name) {
+            return $.trim($(".accounts-header-total-inner-label").text()) == account_name;
+          }, account_name);
+        });
+      });
+
+      // scrape some information about the account
+      casper.then(function() {
+        account_details.push(casper.evaluate(function(account_name) {
+          var data = {
+            name: account_name,
+            pending: parseInt($(".accounts-notification button").text().match(/([0-9]+)/)) || 0,
+            imported: parseInt($(".accounts-toolbar-import-transactions").text().match(/([0-9]+)/)) || 0
+          };
+          return data;
+        }, account_name));
+      });
 
       casper.then(function() {
         if (import_new_transactions) {
           
           // get a count of how many transactions are currently being displayed
-          let current_count = casper.evaluate(function() {
+          /*let current_count = casper.evaluate(function() {
             return $(".ynab-grid-body-row").length;
-          });
+          });*/
           
           // click the import button
           casper.evaluate(function() {
@@ -108,13 +113,16 @@ if (is_blank(username) || is_blank(password)) {
           });
 
           // wait for the import to complete
-          let expected_count = current_count + account_details[account_details.length-1].imported;
+          // this is super ghetto and I'm not sure it will work
+          casper.wait(3000);
+          
+          /*let expected_count = current_count + account_details[account_details.length-1].imported;
           casper.waitFor(function import_to_complete() {
             return this.evaluate(function(expected_count) {
               // return $.trim($(".accounts-toolbar-import-transactions").text()) == "Import";
               return return $(".ynab-grid-body-row").length == expected_count;
             }, expected_count);
-          });
+          });*/
         }
       });
     });
