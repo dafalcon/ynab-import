@@ -49,8 +49,19 @@ casper.on('remote.message', function(msg) {
   }
 });
 
+// pull username and password from environment variables
+var system = require('system');
+var env = system.env;
+if (is_blank(username)) {
+  username = env.YNAB_USERNAME;
+}
+if (is_blank(password)) {
+  password = env.YNAB_PASSWORD;
+}
+
 if (is_blank(username) || is_blank(password)) {
   print_usage(casper);
+  phantom.exit(1);
 } else {
   casper.start('https://app.youneedabudget.com/');
 
@@ -131,6 +142,7 @@ if (is_blank(username) || is_blank(password)) {
     print_account_summary(casper, account_details, import_new_transactions);
   });
 
+  casper.run();
 }
 
-casper.run();
+
