@@ -24,9 +24,7 @@ function print_account_summary(casper, accounts, import_new_transactions) {
 }
 
 // client scripts have to be local
-var casper = require('casper').create({
-  clientScripts: ['jquery.min.js']
-});
+var casper = require('casper').create();
 
 // Check command line arguments
 var username = casper.cli.options["username"],
