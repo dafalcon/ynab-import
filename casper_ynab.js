@@ -1,7 +1,7 @@
 #!node_modules/casperjs/bin/casperjs
 
 function print_usage(casper) {
-  casper.echo("Usage: ./casper_ynab.js --username=USERNAME --password=PASSWORD [--import]");
+  casper.echo("Usage: ./casper_ynab.js --username=USERNAME --password=PASSWORD [--import] [--verbose] [--logLevel=LOGLEVEL]");
 }
 
 function is_blank(string) {
@@ -32,8 +32,17 @@ var casper = require('casper').create({
 var username = casper.cli.options["username"],
     password = casper.cli.options["password"],
     import_new_transactions = casper.cli.options["import"],
+    verbose = casper.cli.options["verbose"],
+    logLevel = casper.cli.options["logLevel"],
     account_names = [],
     account_details = [];
+
+if (verbose) {
+  casper.options.verbose = true;
+}
+if (logLevel) {
+  casper.options.logLevel = logLevel;
+}
 
 // print browser console messages if we're running in verbose mode
 casper.on('remote.message', function(msg) {
